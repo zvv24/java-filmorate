@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
@@ -18,27 +19,19 @@ public class FilmController {
     private final Map<Integer, Film> films = new HashMap<>();
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public Film create(@Valid @RequestBody Film film) {
         log.info("Создание нового фильма {}", film);
         if (film.getName() == null || film.getName().isBlank()) {
-            String error = "Название не может быть пустым";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
+            throw new ValidationException("Название не может быть пустым");
         }
-        if (film.getDescription().length() > 200) {
-            String error = "Максимальная длина описания — 200 символов";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
+        if (film.getDescription() != null && film.getDescription().length() > 200) {
+            throw new ValidationException("Максимальная длина описания — 200 символов");
         }
-        if (film.getReleaseDate().isBefore(minReleaseDate)) {
-            String error = "Дата релиза должна быть не раньше 28 декабря 1895 года";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
+        if (film.getDescription() != null && film.getReleaseDate().isBefore(minReleaseDate)) {
+            throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
         }
-        if (film.getDuration() <= 0) {
-            String error = "Продолжительность фильма должна быть положительным числом";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
+        if (film.getDescription() != null && film.getDuration() <= 0) {
+            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
         film.setId(getNextId());
         films.put(film.getId(), film);
@@ -47,28 +40,8 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@RequestBody Film newFilm) {
+    public Film update(@Valid @RequestBody Film newFilm) throws ValidationException {
         log.info("Обновление фильма с ID {}", newFilm.getId());
-        if (newFilm.getId() == null) {
-            String error = "Id должен быть указан";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if (newFilm.getDescription().length() > 200) {
-            String error = "Максимальная длина описания — 200 символов";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if (newFilm.getReleaseDate().isBefore(minReleaseDate)) {
-            String error = "Дата релиза должна быть не раньше 28 декабря 1895 года";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if (newFilm.getDuration() <= 0) {
-            String error = "Продолжительность фильма должна быть положительным числом";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
         if (films.containsKey(newFilm.getId())) {
             Film oldFilm = films.get(newFilm.getId());
             if (newFilm.getName() != null) {

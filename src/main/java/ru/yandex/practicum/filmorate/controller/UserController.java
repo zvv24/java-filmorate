@@ -24,7 +24,7 @@ public class UserController {
             log.error("Ошибка валидации {}", error);
             throw new ValidationException(error);
         }
-        if ((user.getLogin() == null || user.getLogin().isBlank()) && user.getLogin().contains(" ")) {
+        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
             String error = "Логин не может быть пустым и содержать пробелы";
             log.error("Ошибка валидации {}", error);
             throw new ValidationException(error);
@@ -46,43 +46,42 @@ public class UserController {
 
     @PutMapping
     public User update(@RequestBody User newUser) {
-        if (newUser.getId() == null) {
-            String error = "Id должен быть указан";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if ((newUser.getEmail() == null || newUser.getEmail().isBlank()) || !newUser.getEmail().contains("@")) {
-            String error = "Электронная почта не может быть пустой и должна содержать символ '@'";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if ((newUser.getLogin() == null || newUser.getLogin().isBlank()) && newUser.getLogin().contains(" ")) {
-            String error = "Логин не может быть пустым и содержать пробелы";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
-        if (newUser.getName() == null || newUser.getName().isBlank()) {
-            newUser.setName(newUser.getLogin());
-            log.info("Имя было пустым, использован логин {}", newUser.getLogin());
-        }
-        if (newUser.getBirthday().isAfter(LocalDate.now())) {
-            String error = "Дата рождения не может быть в будущем";
-            log.error("Ошибка валидации {}", error);
-            throw new ValidationException(error);
-        }
         if (users.containsKey(newUser.getId())) {
             User oldUser = users.get(newUser.getId());
             if (newUser.getEmail() != null) {
-                oldUser.setEmail(newUser.getEmail());
+                if ((newUser.getEmail() == null || newUser.getEmail().isBlank()) || !newUser.getEmail().contains("@")) {
+                    String error = "Электронная почта не может быть пустой и должна содержать символ '@'";
+                    log.error("Ошибка валидации {}", error);
+                    throw new ValidationException(error);
+                } else {
+                    oldUser.setEmail(newUser.getEmail());
+                }
             }
             if (newUser.getLogin() != null) {
-                oldUser.setLogin(newUser.getLogin());
+                if (newUser.getLogin() == null || newUser.getLogin().isBlank() || newUser.getLogin().contains(" ")) {
+                    String error = "Логин не может быть пустым и содержать пробелы";
+                    log.error("Ошибка валидации {}", error);
+                    throw new ValidationException(error);
+                } else {
+                    oldUser.setLogin(newUser.getLogin());
+                }
             }
             if (newUser.getName() != null) {
-                oldUser.setName(newUser.getName());
+                if (newUser.getName() == null || newUser.getName().isBlank()) {
+                    newUser.setName(newUser.getLogin());
+                    log.info("Имя было пустым, использован логин {}", newUser.getLogin());
+                } else {
+                    oldUser.setName(newUser.getName());
+                }
             }
             if (newUser.getBirthday() != null) {
-                oldUser.setBirthday(newUser.getBirthday());
+                if (newUser.getBirthday().isAfter(LocalDate.now())) {
+                    String error = "Дата рождения не может быть в будущем";
+                    log.error("Ошибка валидации {}", error);
+                    throw new ValidationException(error);
+                } else {
+                    oldUser.setBirthday(newUser.getBirthday());
+                }
             }
             log.info("Пользователь с ID = {} обновлен", newUser.getId());
             return oldUser;
