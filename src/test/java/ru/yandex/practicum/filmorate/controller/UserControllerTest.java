@@ -1,15 +1,21 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class UserControllerTest {
+
+    ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    Validator validator = factory.getValidator();
     UserController userController = new UserController();
 
     @Test
@@ -20,9 +26,9 @@ public class UserControllerTest {
         user.setLogin("Login");
         user.setBirthday(LocalDate.of(2005, 6, 24));
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> userController.create(user));
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
         assertEquals("Электронная почта не может быть пустой и должна содержать символ '@'",
-                exception.getMessage());
+                violations.iterator().next().getMessage());
     }
 
     @Test
@@ -33,27 +39,28 @@ public class UserControllerTest {
         user.setLogin("Login");
         user.setBirthday(LocalDate.of(2005, 6, 24));
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> userController.create(user));
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
         assertEquals("Электронная почта не может быть пустой и должна содержать символ '@'",
-                exception.getMessage());
+                violations.iterator().next().getMessage());
     }
 
     @Test
     public void loginCannotBeEmptyOrContainSpaces() {
         User user = new User();
-        user.setEmail("email@.com");
+        user.setEmail("qwe@email.com");
         user.setName("Name");
         user.setLogin(" ");
         user.setBirthday(LocalDate.of(2005, 6, 24));
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> userController.create(user));
-        assertEquals("Логин не может быть пустым и содержать пробелы", exception.getMessage());
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        assertEquals("Логин не может быть пустым и содержать пробелы",
+                violations.iterator().next().getMessage());
     }
 
     @Test
     public void ifNameIsEmptyUsedLogin() {
         User user = new User();
-        user.setEmail("email@.com");
+        user.setEmail("qwe@email.com");
         user.setLogin("Login");
         user.setBirthday(LocalDate.of(2005, 6, 24));
 
@@ -64,12 +71,12 @@ public class UserControllerTest {
     @Test
     public void birthdayCannotBeInTheFuture() {
         User user = new User();
-        user.setEmail("email@.com");
+        user.setEmail("qwe@email.com");
         user.setName("Name");
         user.setLogin("Login");
         user.setBirthday(LocalDate.of(2026, 6, 24));
 
-        ValidationException exception = assertThrows(ValidationException.class, () -> userController.create(user));
-        assertEquals("Дата рождения не может быть в будущем", exception.getMessage());
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+        assertEquals("Дата рождения не может быть в будущем", violations.iterator().next().getMessage());
     }
 }

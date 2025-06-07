@@ -21,18 +21,11 @@ public class FilmController {
     @PostMapping
     public Film create(@Valid @RequestBody Film film) {
         log.info("Создание нового фильма {}", film);
-        if (film.getName() == null || film.getName().isBlank()) {
-            throw new ValidationException("Название не может быть пустым");
-        }
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
-            throw new ValidationException("Максимальная длина описания — 200 символов");
-        }
+
         if (film.getDescription() != null && film.getReleaseDate().isBefore(minReleaseDate)) {
             throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
         }
-        if (film.getDescription() != null && film.getDuration() <= 0) {
-            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
-        }
+
         film.setId(getNextId());
         films.put(film.getId(), film);
         log.info("Создан новый фильм {}", film);
@@ -40,21 +33,37 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@Valid @RequestBody Film newFilm) throws ValidationException {
+    public Film update(@Valid @RequestBody Film newFilm) {
         log.info("Обновление фильма с ID {}", newFilm.getId());
         if (films.containsKey(newFilm.getId())) {
             Film oldFilm = films.get(newFilm.getId());
             if (newFilm.getName() != null) {
-                oldFilm.setName(newFilm.getName());
+                if (newFilm.getName().isBlank()) {
+                    throw new ValidationException("Название не может быть пустым");
+                } else {
+                    oldFilm.setName(newFilm.getName());
+                }
             }
             if (newFilm.getDescription() != null) {
-                oldFilm.setDescription(newFilm.getDescription());
+                if (newFilm.getDescription().length() > 200) {
+                    throw new ValidationException("Максимальная длина описания — 200 символов");
+                } else {
+                    oldFilm.setDescription(newFilm.getDescription());
+                }
             }
             if (newFilm.getReleaseDate() != null) {
-                oldFilm.setReleaseDate(newFilm.getReleaseDate());
+                if (newFilm.getReleaseDate().isBefore(minReleaseDate)) {
+                    throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
+                } else {
+                    oldFilm.setReleaseDate(newFilm.getReleaseDate());
+                }
             }
             if (newFilm.getDuration() != null) {
-                oldFilm.setDuration(newFilm.getDuration());
+                if (newFilm.getDuration() <= 0) {
+                    throw new ValidationException("Продолжительность фильма должна быть положительным числом");
+                } else {
+                    oldFilm.setDuration(newFilm.getDuration());
+                }
             }
             log.info("Фильм с ID = {} обновлен", newFilm.getId());
             return oldFilm;
