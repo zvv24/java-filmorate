@@ -7,6 +7,9 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -18,7 +21,7 @@ public class FilmControllerTest {
 
     ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
-    FilmController filmController = new FilmController();
+    FilmController filmController;
 
     @Test
     public void creatingFilmWithEmptyNameThrowsException() {
@@ -51,6 +54,10 @@ public class FilmControllerTest {
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(1895, 12, 27));
         film.setDuration(60);
+
+        FilmStorage filmStorage = new InMemoryFilmStorage();
+        FilmService filmService = new FilmService(filmStorage);
+        filmController = new FilmController(filmService);
 
         ValidationException exception = assertThrows(ValidationException.class,
                 () -> filmController.create(film));

@@ -6,6 +6,9 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -16,7 +19,7 @@ public class UserControllerTest {
 
     ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
-    UserController userController = new UserController();
+    UserController userController;
 
     @Test
     public void emailCannotBeEmpty() {
@@ -63,6 +66,10 @@ public class UserControllerTest {
         user.setEmail("qwe@email.com");
         user.setLogin("Login");
         user.setBirthday(LocalDate.of(2005, 6, 24));
+
+        UserStorage userStorage = new InMemoryUserStorage();
+        UserService userService = new UserService(userStorage);
+        userController = new UserController(userService);
 
         User user1 = userController.create(user);
         assertEquals(user1.getName(), user1.getLogin());
