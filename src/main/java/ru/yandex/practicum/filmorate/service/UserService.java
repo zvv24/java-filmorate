@@ -10,7 +10,6 @@ import java.util.*;
 @Service
 public class UserService {
     private UserStorage userStorage;
-    private final Map<Integer, Set<Integer>> friends = new HashMap<>();
 
     @Autowired
     public UserService(UserStorage userStorage) {
@@ -18,39 +17,38 @@ public class UserService {
     }
 
     public void addFriend(Integer userId, Integer friendId) {
-        if (!friends.containsKey(userId)) {
-            friends.put(userId, new HashSet<>());
-        }
-        friends.get(userId).add(friendId);
+        User user = userStorage.getById(userId);
+        User friend = userStorage.getById(friendId);
 
-        if (!friends.containsKey(friendId)) {
-            friends.put(friendId, new HashSet<>());
-        }
-        friends.get(friendId).add(userId);
+        user.getFriends().add(friendId);
+        friend.getFriends().add(userId);
     }
 
     public void removeFriend(Integer userId, Integer friendId) {
-        if (friends.containsKey(userId)) {
-            friends.get(userId).remove(friendId);
-        }
-        if (friends.containsKey(friendId)) {
-            friends.get(friendId).remove(userId);
-        }
+        User user = userStorage.getById(userId);
+        User friend = userStorage.getById(friendId);
+
+        user.getFriends().remove(friendId);
+        friend.getFriends().remove(userId);
     }
 
     public List<User> getAllFriends(Integer userId) {
-        return friends.getOrDefault(userId, Collections.emptySet()).stream()
+        User user = userStorage.getById(userId);
+
+        return user.getFriends().stream()
                 .map(userStorage::getById)
                 .filter(Objects::nonNull)
                 .toList();
     }
 
     public List<User> getMutualFriends(Integer userId, Integer otherId) {
-        Set<Integer> userFriends = friends.getOrDefault(userId, Collections.emptySet());
-        Set<Integer> otherFriends = friends.getOrDefault(otherId, Collections.emptySet());
+        User user = userStorage.getById(userId);
+        User otherUser = userStorage.getById(otherId);
 
-        return userFriends.stream()
-                .filter(otherFriends::contains)
+        Set<Integer> mutualFriendIds = new HashSet<>(user.getFriends());
+        mutualFriendIds.retainAll(otherUser.getFriends());
+
+        return mutualFriendIds.stream()
                 .map(userStorage::getById)
                 .filter(Objects::nonNull)
                 .toList();

@@ -10,6 +10,8 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -56,7 +58,8 @@ public class FilmControllerTest {
         film.setDuration(60);
 
         FilmStorage filmStorage = new InMemoryFilmStorage();
-        FilmService filmService = new FilmService(filmStorage);
+        UserStorage userStorage = new InMemoryUserStorage();
+        FilmService filmService = new FilmService(filmStorage, userStorage);
         filmController = new FilmController(filmService);
 
         ValidationException exception = assertThrows(ValidationException.class,

@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
@@ -8,6 +9,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class InMemoryUserStorage implements UserStorage {
@@ -58,7 +60,7 @@ public class InMemoryUserStorage implements UserStorage {
             }
             return oldUser;
         }
-        throw new ValidationException("Пользователь с ID = " + newUser.getId() + " не найден");
+        throw new NotFoundException("Пользователь с ID = " + newUser.getId() + " не найден");
     }
 
     @Override
@@ -68,13 +70,11 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User getById(Integer id) {
-        if (users.get(id) == null || id <= 0) {
-            throw new IllegalArgumentException("Пользователя с ID: " + id + " не существует");
-        }
-        return users.get(id);
+        return Optional.ofNullable(users.get(id))
+                .orElseThrow(() -> new NotFoundException("Пользователя с ID: " + id + " не существует"));
     }
 
-    public Integer getNextId() {
+    private Integer getNextId() {
         int maxid = users.keySet()
                 .stream()
                 .mapToInt(id -> id)

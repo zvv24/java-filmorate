@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.storage.film;
 
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
@@ -8,6 +9,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
@@ -59,7 +61,7 @@ public class InMemoryFilmStorage implements FilmStorage {
             }
             return oldFilm;
         }
-        throw new ValidationException("Фильм с ID = " + newFilm.getId() + " не найден");
+        throw new NotFoundException("Фильм с ID = " + newFilm.getId() + " не найден");
     }
 
     @Override
@@ -69,13 +71,11 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public Film getById(Integer id) {
-        if (films.get(id) == null) {
-            throw new IllegalArgumentException("Фильма с ID: " + id + " не существует");
-        }
-        return films.get(id);
+        return Optional.ofNullable(films.get(id))
+                .orElseThrow(() -> new NotFoundException("Фильма с ID: " + id + " не существует"));
     }
 
-    public Integer getNextId() {
+    private Integer getNextId() {
         int maxid = films.keySet()
                 .stream()
                 .mapToInt(id -> id)
