@@ -1,6 +1,6 @@
 # java-filmorate
 Template repository for Filmorate project.
-![База данных](filmsDB.png)
+![База данных](films_DB.png)
 - Получение всех фильмов
 ```sql
 SELECT name
