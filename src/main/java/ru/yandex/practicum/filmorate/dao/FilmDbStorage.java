@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.MpaService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
@@ -16,18 +15,22 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 
 @Component
 @Qualifier("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
     private final LocalDate minReleaseDate = LocalDate.of(1895, 12, 28);
     private final JdbcTemplate jdbcTemplate;
+    private final LikeDao likeDao;
+    private final GenreDao genreDao;
 
     @Autowired
-    public FilmDbStorage(JdbcTemplate jdbcTemplate) {
+    public FilmDbStorage(JdbcTemplate jdbcTemplate, LikeDao likeDao, GenreDao genreDao) {
         this.jdbcTemplate = jdbcTemplate;
+        this.likeDao = likeDao;
+        this.genreDao = genreDao;
     }
 
     @Override
@@ -35,22 +38,13 @@ public class FilmDbStorage implements FilmStorage {
         MpaService mpaService = new MpaService(jdbcTemplate);
         try {
             mpaService.getById(film.getMpa().getId());
-        } catch (NotFoundException e) {
+        } catch (ValidationException e) {
             throw new NotFoundException("MPA с id=" + film.getMpa().getId() + " не существует");
-        }
-
-        if (film.getName().isBlank()) {
-            throw new ValidationException("Название не может быть пустым");
-        }
-        if (film.getDescription().length() > 200) {
-            throw new ValidationException("Максимальная длина описания — 200 символов");
         }
         if (film.getReleaseDate().isBefore(minReleaseDate)) {
             throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
         }
-        if (film.getDuration() <= 0) {
-            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
-        }
+        genreDao.validateGenres(film.getGenres());
 
         film.setId(getNextId());
         String sql = "INSERT INTO films (film_id, name, description, release_date, duration, mpa_id) " +
@@ -102,7 +96,14 @@ public class FilmDbStorage implements FilmStorage {
     public Film getById(Integer id) {
         String sql = "SELECT f.*, m.name AS mpa_name FROM films AS f JOIN mpa AS m ON f.mpa_id = " +
                 "m.mpa_id WHERE f.film_id = ?";
-        return jdbcTemplate.queryForObject(sql, this::mapRowFilm, id);
+        Film film = jdbcTemplate.queryForObject(sql, this::mapRowFilm, id);
+
+        film.setGenres(new HashSet<>(genreDao.getGenresForFilms(Collections.singleton(id))
+                .getOrDefault(id, Collections.emptySet())));
+        film.setLikes(likeDao.getLikesForFilms(Collections.singleton(id))
+                .getOrDefault(id, Collections.emptySet()));
+
+        return film;
     }
 
     private Film mapRowFilm(ResultSet resultSet, int rowNum) throws SQLException {
@@ -118,22 +119,11 @@ public class FilmDbStorage implements FilmStorage {
         mpa.setName(resultSet.getString("mpa_name"));
         film.setMpa(mpa);
 
-        String genresSql = "SELECT g.* FROM film_genre AS fg " +
-                "JOIN genres AS g ON fg.genre_id = g.genre_id " +
-                "WHERE fg.film_id = ?";
-        List<Genre> genres = jdbcTemplate.query(genresSql, (resultSet1, rowNum1) -> {
-            Genre genre = new Genre();
-            genre.setId(resultSet1.getInt("genre_id"));
-            genre.setName(resultSet1.getString("name"));
-            return genre;
-        }, film.getId());
-        film.setGenres(new HashSet<>(genres));
-
-        String likesSql = "SELECT user_id FROM likes WHERE film_id = ?";
-        List<Integer> likes = jdbcTemplate.queryForList(likesSql, Integer.class, film.getId());
-        film.setLikes(new HashSet<>(likes));
-
         return film;
+    }
+
+    public JdbcTemplate getJdbcTemplate() {
+        return jdbcTemplate;
     }
 
     private Integer getNextId() {
