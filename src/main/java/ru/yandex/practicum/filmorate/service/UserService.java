@@ -1,57 +1,53 @@
 package ru.yandex.practicum.filmorate.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dao.FriendshipDao;
+import ru.yandex.practicum.filmorate.dao.UserDbStorage;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 
 @Service
 public class UserService {
     private UserStorage userStorage;
+    private FriendshipDao friendshipDao;
 
     @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendshipDao friendshipDao) {
         this.userStorage = userStorage;
+        this.friendshipDao = friendshipDao;
+
     }
 
     public void addFriend(Integer userId, Integer friendId) {
-        User user = userStorage.getById(userId);
-        User friend = userStorage.getById(friendId);
+        userStorage.getById(userId);
+        userStorage.getById(friendId);
 
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
+        friendshipDao.addFriend(userId, friendId);
     }
 
     public void removeFriend(Integer userId, Integer friendId) {
-        User user = userStorage.getById(userId);
-        User friend = userStorage.getById(friendId);
+        userStorage.getById(userId);
+        userStorage.getById(friendId);
 
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
+        friendshipDao.removeFriend(userId, friendId);
     }
 
     public List<User> getAllFriends(Integer userId) {
-        User user = userStorage.getById(userId);
-
-        return user.getFriends().stream()
-                .map(userStorage::getById)
-                .filter(Objects::nonNull)
-                .toList();
+        userStorage.getById(userId);
+        List<Integer> friends = friendshipDao.getAllFriends(userId);
+        return ((UserDbStorage) userStorage).getUsersById(friends);
     }
 
     public List<User> getMutualFriends(Integer userId, Integer otherId) {
-        User user = userStorage.getById(userId);
-        User otherUser = userStorage.getById(otherId);
-
-        Set<Integer> mutualFriendIds = new HashSet<>(user.getFriends());
-        mutualFriendIds.retainAll(otherUser.getFriends());
-
-        return mutualFriendIds.stream()
-                .map(userStorage::getById)
-                .filter(Objects::nonNull)
-                .toList();
+        userStorage.getById(userId);
+        userStorage.getById(otherId);
+        List<Integer> mutualFriends = friendshipDao.getMutualFriends(userId, otherId);
+        return ((UserDbStorage) userStorage).getUsersById(mutualFriends);
     }
 
     public User create(User user) {
