@@ -5,46 +5,27 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Mpa;
-import ru.yandex.practicum.filmorate.service.MpaService;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.List;
 
 @Component
 @Qualifier("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
-    private final LocalDate minReleaseDate = LocalDate.of(1895, 12, 28);
     private final JdbcTemplate jdbcTemplate;
-    private final LikeDao likeDao;
-    private final GenreDao genreDao;
 
     @Autowired
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, LikeDao likeDao, GenreDao genreDao) {
+    public FilmDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.likeDao = likeDao;
-        this.genreDao = genreDao;
     }
 
     @Override
     public Film create(Film film) {
-        MpaService mpaService = new MpaService(jdbcTemplate);
-        try {
-            mpaService.getById(film.getMpa().getId());
-        } catch (ValidationException e) {
-            throw new NotFoundException("MPA с id=" + film.getMpa().getId() + " не существует");
-        }
-        if (film.getReleaseDate().isBefore(minReleaseDate)) {
-            throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
-        }
-        genreDao.validateGenres(film.getGenres());
 
         film.setId(getNextId());
         String sql = "INSERT INTO films (film_id, name, description, release_date, duration, mpa_id) " +
@@ -98,12 +79,20 @@ public class FilmDbStorage implements FilmStorage {
                 "m.mpa_id WHERE f.film_id = ?";
         Film film = jdbcTemplate.queryForObject(sql, this::mapRowFilm, id);
 
-        film.setGenres(new HashSet<>(genreDao.getGenresForFilms(Collections.singleton(id))
-                .getOrDefault(id, Collections.emptySet())));
-        film.setLikes(likeDao.getLikesForFilms(Collections.singleton(id))
-                .getOrDefault(id, Collections.emptySet()));
-
         return film;
+    }
+
+    public List<Film> getMostPopularFilms(Integer count) {
+        String sql = "SELECT f.*, m.name AS mpa_name FROM films AS f " +
+                "LEFT JOIN likes AS l ON f.film_id = l.film_id " +
+                "JOIN mpa AS m ON f.mpa_id = m.mpa_id " +
+                "GROUP BY f.film_id " +
+                "ORDER BY COUNT(l.user_id) DESC " +
+                "LIMIT ?";
+
+        List<Film> films = jdbcTemplate.query(sql, this::mapRowFilm, count);
+
+        return films;
     }
 
     private Film mapRowFilm(ResultSet resultSet, int rowNum) throws SQLException {
@@ -120,10 +109,6 @@ public class FilmDbStorage implements FilmStorage {
         film.setMpa(mpa);
 
         return film;
-    }
-
-    public JdbcTemplate getJdbcTemplate() {
-        return jdbcTemplate;
     }
 
     private Integer getNextId() {

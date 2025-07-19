@@ -12,6 +12,8 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Qualifier("userDbStorage")
@@ -69,6 +71,15 @@ public class UserDbStorage implements UserStorage {
         } catch (EmptyResultDataAccessException e) {
             throw new NotFoundException("Пользователь с ID = " + id + " не найден");
         }
+    }
+
+    public List<User> getUsersById(Collection<Integer> ids) {
+        String sql = String.format(
+                "SELECT * FROM users WHERE user_id IN (%s)",
+                ids.stream().map(String::valueOf).collect(Collectors.joining(","))
+        );
+
+        return jdbcTemplate.query(sql, this::mapRowUser);
     }
 
     private User mapRowUser(ResultSet resultSet, int rowNum) throws SQLException {

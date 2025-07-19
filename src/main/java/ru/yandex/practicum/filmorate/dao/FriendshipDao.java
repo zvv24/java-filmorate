@@ -31,7 +31,7 @@ public class FriendshipDao {
     }
 
     public List<Integer> getMutualFriends(Integer userId, Integer otherId) {
-        String sql = "SELECT f1.friend_id " +
+        String sql = "SELECT DISTINCT f1.friend_id " +
                 "FROM friendship AS f1 " +
                 "JOIN friendship AS f2 ON f1.friend_id = f2.friend_id " +
                 "WHERE f1.user_id = ? AND f2.user_id = ?";

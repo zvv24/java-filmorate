@@ -4,12 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dao.FriendshipDao;
+import ru.yandex.practicum.filmorate.dao.UserDbStorage;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class UserService {
@@ -39,21 +39,15 @@ public class UserService {
 
     public List<User> getAllFriends(Integer userId) {
         userStorage.getById(userId);
-
-        return friendshipDao.getAllFriends(userId).stream()
-                .map(userStorage::getById)
-                .filter(Objects::nonNull)
-                .toList();
+        List<Integer> friends = friendshipDao.getAllFriends(userId);
+        return ((UserDbStorage) userStorage).getUsersById(friends);
     }
 
     public List<User> getMutualFriends(Integer userId, Integer otherId) {
         userStorage.getById(userId);
         userStorage.getById(otherId);
-
-        return friendshipDao.getMutualFriends(userId, otherId).stream()
-                .map(userStorage::getById)
-                .filter(Objects::nonNull)
-                .toList();
+        List<Integer> mutualFriends = friendshipDao.getMutualFriends(userId, otherId);
+        return ((UserDbStorage) userStorage).getUsersById(mutualFriends);
     }
 
     public User create(User user) {
