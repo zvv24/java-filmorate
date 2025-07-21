@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dao.FilmDbStorage;
 import ru.yandex.practicum.filmorate.dao.GenreDao;
 import ru.yandex.practicum.filmorate.dao.LikeDao;
+import ru.yandex.practicum.filmorate.dao.MpaDao;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -15,6 +16,7 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class FilmService {
@@ -23,16 +25,16 @@ public class FilmService {
     private UserStorage userStorage;
     private final LikeDao likeDao;
     private final GenreDao genreDao;
-    private final MpaService mpaService;
+    private final MpaDao mpaDao;
 
     @Autowired
     public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
-                       @Qualifier("userDbStorage") UserStorage userStorage, LikeDao likeDao, GenreDao genreDao, MpaService mpaService) {
+                       @Qualifier("userDbStorage") UserStorage userStorage, LikeDao likeDao, GenreDao genreDao, MpaDao mpaDao) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
         this.likeDao = likeDao;
         this.genreDao = genreDao;
-        this.mpaService = mpaService;
+        this.mpaDao = mpaDao;
     }
 
     public void addLike(Integer filmId, Integer userId) {
@@ -55,7 +57,20 @@ public class FilmService {
 
     public List<Film> getMostPopularFilms(Integer count) {
         List<Film> films = ((FilmDbStorage) filmStorage).getMostPopularFilms(count);
-        films.forEach(this::loadGenresAndLikes);
+
+        Set<Integer> filmsId = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
+        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
+
+        films.forEach(film -> {
+            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
+            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
+        });
+
+
         return films;
     }
 
@@ -74,7 +89,7 @@ public class FilmService {
             throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
         }
         try {
-            mpaService.getById(film.getMpa().getId());
+            mpaDao.getById(film.getMpa().getId());
         } catch (ValidationException e) {
             throw new NotFoundException("MPA с id=" + film.getMpa().getId() + " не существует");
         }
@@ -98,6 +113,21 @@ public class FilmService {
     }
 
     public Collection<Film> getAll() {
-        return filmStorage.getAll();
+        Collection<Film> films = filmStorage.getAll();
+
+        Set<Integer> filmsId = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
+
+        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
+
+        films.forEach(film -> {
+            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
+            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
+        });
+
+        return films;
     }
 }

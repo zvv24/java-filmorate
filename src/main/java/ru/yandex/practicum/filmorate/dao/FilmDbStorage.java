@@ -90,9 +90,7 @@ public class FilmDbStorage implements FilmStorage {
                 "ORDER BY COUNT(l.user_id) DESC " +
                 "LIMIT ?";
 
-        List<Film> films = jdbcTemplate.query(sql, this::mapRowFilm, count);
-
-        return films;
+        return jdbcTemplate.query(sql, this::mapRowFilm, count);
     }
 
     private Film mapRowFilm(ResultSet resultSet, int rowNum) throws SQLException {

@@ -40,7 +40,7 @@ public class UserService {
     public List<User> getAllFriends(Integer userId) {
         userStorage.getById(userId);
         List<Integer> friends = friendshipDao.getAllFriends(userId);
-        return ((UserDbStorage) userStorage).getUsersById(friends);
+        return userStorage.getUsersById(friends);
     }
 
     public List<User> getMutualFriends(Integer userId, Integer otherId) {

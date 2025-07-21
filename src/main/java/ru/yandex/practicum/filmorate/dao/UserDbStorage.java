@@ -73,6 +73,7 @@ public class UserDbStorage implements UserStorage {
         }
     }
 
+    @Override
     public List<User> getUsersById(Collection<Integer> ids) {
         String sql = String.format(
                 "SELECT * FROM users WHERE user_id IN (%s)",

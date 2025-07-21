@@ -6,10 +6,8 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class InMemoryUserStorage implements UserStorage {
@@ -72,6 +70,14 @@ public class InMemoryUserStorage implements UserStorage {
     public User getById(Integer id) {
         return Optional.ofNullable(users.get(id))
                 .orElseThrow(() -> new NotFoundException("Пользователя с ID: " + id + " не существует"));
+    }
+
+    @Override
+    public List<User> getUsersById(Collection<Integer> ids) {
+        return ids.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     private Integer getNextId() {
