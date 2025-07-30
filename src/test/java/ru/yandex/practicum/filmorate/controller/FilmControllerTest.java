@@ -5,6 +5,10 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import ru.yandex.practicum.filmorate.dao.GenreDao;
+import ru.yandex.practicum.filmorate.dao.LikeDao;
+import ru.yandex.practicum.filmorate.dao.MpaDao;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
@@ -59,7 +63,11 @@ public class FilmControllerTest {
 
         FilmStorage filmStorage = new InMemoryFilmStorage();
         UserStorage userStorage = new InMemoryUserStorage();
-        FilmService filmService = new FilmService(filmStorage, userStorage);
+        JdbcTemplate jdbcTemplate = new JdbcTemplate();
+        LikeDao likeDao = new LikeDao(jdbcTemplate);
+        GenreDao genreDao = new GenreDao(jdbcTemplate);
+        MpaDao mpaDao = new MpaDao(jdbcTemplate);
+        FilmService filmService = new FilmService(filmStorage, userStorage, likeDao, genreDao, mpaDao);
         filmController = new FilmController(filmService);
 
         ValidationException exception = assertThrows(ValidationException.class,

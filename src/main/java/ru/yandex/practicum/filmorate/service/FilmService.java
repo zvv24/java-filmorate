@@ -1,24 +1,40 @@
 package ru.yandex.practicum.filmorate.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dao.FilmDbStorage;
+import ru.yandex.practicum.filmorate.dao.GenreDao;
+import ru.yandex.practicum.filmorate.dao.LikeDao;
+import ru.yandex.practicum.filmorate.dao.MpaDao;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.Collection;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class FilmService {
+    private final LocalDate minReleaseDate = LocalDate.of(1895, 12, 28);
     private FilmStorage filmStorage;
     private UserStorage userStorage;
+    private final LikeDao likeDao;
+    private final GenreDao genreDao;
+    private final MpaDao mpaDao;
 
     @Autowired
-    public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       @Qualifier("userDbStorage") UserStorage userStorage, LikeDao likeDao, GenreDao genreDao, MpaDao mpaDao) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
+        this.likeDao = likeDao;
+        this.genreDao = genreDao;
+        this.mpaDao = mpaDao;
     }
 
     public void addLike(Integer filmId, Integer userId) {
@@ -29,36 +45,77 @@ public class FilmService {
             throw new ValidationException("Пользователь может поставить только 1 лайк на фильм");
         }
 
-        film.getLikes().add(userId);
+        likeDao.addLike(filmId, userId);
     }
 
     public void removeLike(Integer filmId, Integer userId) {
-        Film film = filmStorage.getById(filmId);
+        filmStorage.getById(filmId);
         userStorage.getById(userId);
 
-        film.getLikes().remove(userId);
+        likeDao.removeLike(filmId, userId);
     }
 
     public List<Film> getMostPopularFilms(Integer count) {
-        return filmStorage.getAll().stream()
-                .sorted((f1, f2) -> Integer.compare(f2.getLikes().size(), f1.getLikes().size()))
-                .limit(count)
-                .toList();
+        List<Film> films = ((FilmDbStorage) filmStorage).getMostPopularFilms(count);
+        getGenresAndLikes(films);
+        return films;
+    }
+
+    private void loadGenresAndLikes(Film film) {
+        Set<Genre> genres = new HashSet<>(genreDao.getGenresForFilms(Collections.singleton(film.getId()))
+                .getOrDefault(film.getId(), Collections.emptySet()));
+        film.setGenres(genres);
+
+        Set<Integer> likes = likeDao.getLikesForFilms(Collections.singleton(film.getId()))
+                .getOrDefault(film.getId(), Collections.emptySet());
+        film.setLikes(likes);
+    }
+
+    public void validateFilms(Film film) {
+        if (film.getReleaseDate().isBefore(minReleaseDate)) {
+            throw new ValidationException("Дата релиза должна быть не раньше 28 декабря 1895 года");
+        }
+        try {
+            mpaDao.getById(film.getMpa().getId());
+        } catch (ValidationException e) {
+            throw new NotFoundException("MPA с id=" + film.getMpa().getId() + " не существует");
+        }
+        genreDao.validateGenres(film.getGenres());
+    }
+
+    public void getGenresAndLikes(List<Film> films) {
+        Set<Integer> filmsId = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
+        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
+
+        films.forEach(film -> {
+            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
+            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
+        });
     }
 
     public Film create(Film film) {
+        validateFilms(film);
         return filmStorage.create(film);
     }
 
     public Film update(Film newFilm) {
+        validateFilms(newFilm);
         return filmStorage.update(newFilm);
     }
 
     public Film getById(Integer id) {
-        return filmStorage.getById(id);
+        Film film = filmStorage.getById(id);
+        loadGenresAndLikes(film);
+        return film;
     }
 
     public Collection<Film> getAll() {
-        return filmStorage.getAll();
+        Collection<Film> films = filmStorage.getAll();
+        getGenresAndLikes((List<Film>) films);
+        return films;
     }
 }

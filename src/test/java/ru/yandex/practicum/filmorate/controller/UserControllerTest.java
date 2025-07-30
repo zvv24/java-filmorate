@@ -5,6 +5,8 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import ru.yandex.practicum.filmorate.dao.FriendshipDao;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
@@ -68,7 +70,8 @@ public class UserControllerTest {
         user.setBirthday(LocalDate.of(2005, 6, 24));
 
         UserStorage userStorage = new InMemoryUserStorage();
-        UserService userService = new UserService(userStorage);
+        FriendshipDao friendshipDao = new FriendshipDao(new JdbcTemplate());
+        UserService userService = new UserService(userStorage, friendshipDao);
         userController = new UserController(userService);
 
         User user1 = userController.create(user);
