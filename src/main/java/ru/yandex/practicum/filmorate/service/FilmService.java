@@ -57,20 +57,7 @@ public class FilmService {
 
     public List<Film> getMostPopularFilms(Integer count) {
         List<Film> films = ((FilmDbStorage) filmStorage).getMostPopularFilms(count);
-
-        Set<Integer> filmsId = films.stream()
-                .map(Film::getId)
-                .collect(Collectors.toSet());
-
-        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
-        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
-
-        films.forEach(film -> {
-            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
-            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
-        });
-
-
+        getGenresAndLikes(films);
         return films;
     }
 
@@ -96,6 +83,20 @@ public class FilmService {
         genreDao.validateGenres(film.getGenres());
     }
 
+    public void getGenresAndLikes(List<Film> films) {
+        Set<Integer> filmsId = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
+        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
+
+        films.forEach(film -> {
+            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
+            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
+        });
+    }
+
     public Film create(Film film) {
         validateFilms(film);
         return filmStorage.create(film);
@@ -114,20 +115,7 @@ public class FilmService {
 
     public Collection<Film> getAll() {
         Collection<Film> films = filmStorage.getAll();
-
-        Set<Integer> filmsId = films.stream()
-                .map(Film::getId)
-                .collect(Collectors.toSet());
-
-        Map<Integer, Set<Genre>> genresMap = genreDao.getGenresForFilms(filmsId);
-
-        Map<Integer, Set<Integer>> likesMap = likeDao.getLikesForFilms(filmsId);
-
-        films.forEach(film -> {
-            film.setGenres(genresMap.getOrDefault(film.getId(), Collections.emptySet()));
-            film.setLikes(likesMap.getOrDefault(film.getId(), Collections.emptySet()));
-        });
-
+        getGenresAndLikes((List<Film>) films);
         return films;
     }
 }
